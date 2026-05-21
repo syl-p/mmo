@@ -1,0 +1,11 @@
+<div class="absolute top-0 left-0 z-100">
+  <ul>
+    <%= for player <- Map.keys(@players) do %>
+      <li>{player}</li>
+    <% end %>
+  </ul>
+</div>
+
+<div class="w-full h-screen">
+  <canvas id="game" phx-hook="ThreeWorld" class="w-full h-full"></canvas>
+</div>

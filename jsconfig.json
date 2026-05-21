@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "checkJs": true,
+    "module": "esnext",
+    "target": "es6",
+    "baseUrl": "./assets/js",
+    "paths": {
+      "*": ["node_modules/*"]
+    }
+  },
+  "include": ["assets/js/**/*"]
+}

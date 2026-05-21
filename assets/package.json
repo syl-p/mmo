@@ -1,0 +1,8 @@
+{
+  "devDependencies": {
+    "@types/phoenix": "^1.6.7",
+    "@types/three": "^0.183.1",
+    "three": "^0.183.2",
+    "tweakpane": "^4.0.5"
+  }
+}

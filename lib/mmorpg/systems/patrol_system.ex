@@ -5,20 +5,20 @@ defmodule Mmorpg.Systems.Patrol do
     state |> patrol()
   end
 
-  def patrol(%MobState{patrol_points: []} = state), do: state
+  def patrol(%MobState{patrol_points: [], transform: _transform} = state), do: state
 
   def patrol(
         %{
-          position: position,
+          transform: transform,
           patrol_points: patrol_points,
           current_patrol_index: current_patrol_index
         } = state
       ) do
     target = Enum.at(patrol_points, current_patrol_index)
 
-    dx = target.x - position.x
-    dy = target.y - position.y
-    dz = target.z - position.z
+    dx = target.x - transform.position.x
+    dy = target.y - transform.position.y
+    dz = target.z - transform.position.z
 
     # find distance to target
     dist = :math.sqrt(dx * dx + dy * dy + dz * dz)
@@ -35,12 +35,12 @@ defmodule Mmorpg.Systems.Patrol do
       step = 0.05
 
       new_position = %{
-        x: position.x + step * dx / dist,
-        y: position.y + step * dy / dist,
-        z: position.z + step * dz / dist
+        x: transform.position.x + step * dx / dist,
+        y: transform.position.y + step * dy / dist,
+        z: transform.position.z + step * dz / dist
       }
 
-      %{state | position: new_position, rotation: rotation}
+      %{state | transform: %{transform | position: new_position, rotation: rotation}}
     end
   end
 

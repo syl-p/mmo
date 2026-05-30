@@ -67,7 +67,12 @@ defmodule MmorpgWeb.RoomChannel do
         },
         socket
       ) do
+
     uuid = socket.assigns.uuid
+		x = if is_binary(x), do: String.to_float(x), else: x
+		y = if is_binary(y), do: String.to_float(y), else: y
+		z = if is_binary(z), do: String.to_float(z), else: z
+
 
     GenServer.cast(
       WorldServer,

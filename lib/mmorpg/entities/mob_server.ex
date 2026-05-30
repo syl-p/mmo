@@ -1,4 +1,5 @@
 defmodule Mmorpg.MobServer do
+  alias Mmorpg.Components
   alias Mmorpg.Systems
   alias Mmorpg.MobState
   use GenServer
@@ -12,8 +13,11 @@ defmodule Mmorpg.MobServer do
 
     mob_state = %MobState{
       uuid: mob_id,
-      position: spawn_position,
-      fsm_state: :idle
+			transform: %Components.Transform{position: spawn_position},
+      ai: %Components.Ai{
+				state: :idle,
+			},
+			patrol_points: []
     }
 
     {:ok, mob_state}

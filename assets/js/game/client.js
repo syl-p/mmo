@@ -19,13 +19,14 @@ export default class Client {
 			.join()
 			.receive("ok", ({ player_uuid, initial_state }) => {
 				this.game.playerUuid = player_uuid;
+				const {position, rotation} = initial_state.transform
 
 				const playerObject = new Player(
 					player_uuid,
 					new THREE.Vector3(
-						initial_state.position.x,
-						initial_state.position.y,
-						initial_state.position.z,
+						position.x,
+						position.y,
+						position.z,
 					),
 				);
 
@@ -43,8 +44,9 @@ export default class Client {
 
 		// ON STATE
 		this.#channel.on("presence_state", ({ players, mobs }) => {
-			players.forEach(({ uuid, position }) => {
+			players.forEach(({ uuid, transform }) => {
 				if (this.game.players.has(uuid)) return;
+				const {position, rotation} = transform
 
 				const playerObject = new Player(
 					uuid,
@@ -54,7 +56,8 @@ export default class Client {
 				this.game.scene.add(playerObject);
 			});
 
-			mobs.forEach(({ uuid, position, rotation }) => {
+			mobs.forEach(({ uuid, transform }) => {
+				const {position, rotation} = transform
 				const mobObject = new Mob(
 					uuid,
 					new THREE.Vector3(position.x, position.y, position.z),
@@ -65,8 +68,9 @@ export default class Client {
 			});
 		});
 
-		this.#channel.on("player_joined", ({ uuid, position, fsm_state }) => {
+		this.#channel.on("player_joined", ({ uuid, transform, fsm_state }) => {
 			if (this.game.players.get(uuid)) return;
+			const {position, rotation} = transform
 
 			const playerObject = new Player(
 				uuid,
@@ -86,14 +90,17 @@ export default class Client {
 		});
 
 		this.#channel.on("world_updated", ({ players, mobs }) => {
-			players.forEach(({ uuid, position, fsm_state }) => {
+			players.forEach(({ uuid, transform, fsm_state }) => {
 				if (this.game.playerUuid !== uuid) {
+					const {position, rotation} = transform
 					this.updatePlayer(uuid, { position, fsm_state });
 				}
 			});
 
-			mobs.forEach(({ uuid, position, rotation, fsm_state }) => {
-				this.updateMob(uuid, { position, rotation, fsm_state });
+			mobs.forEach(({ uuid, transform, ai }) => {
+				const {position, rotation} = transform
+				const {state} = ai
+				this.updateMob(uuid, { position, rotation, state });
 			});
 		});
 
@@ -108,11 +115,11 @@ export default class Client {
 		player.changePosition(position);
 	}
 
-	updateMob(uuid, { position, rotation, fsm_state }) {
+	updateMob(uuid, { position, rotation, state }) {
 		const mob = this.game.mobs.get(uuid);
 		if (!mob) return;
 
-		mob.changeFsmState(fsm_state);
+		mob.changeFsmState(state);
 		mob.changePosition(new THREE.Vector3(position.x, position.y, position.z));
 		mob.rotation.y = Math.PI / 2 - (rotation || 0);
 	}

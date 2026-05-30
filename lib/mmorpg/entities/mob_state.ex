@@ -4,9 +4,6 @@ defmodule Mmorpg.MobState do
   @derive Jason.Encoder
   defstruct [
     :uuid,
-    :fsm_state,
-    :target_uuid,
-    :position,
     transform: %Components.Transform{},
     ai: %Components.Ai{},
 		combat: %Components.Combat{},

@@ -77,7 +77,7 @@ defmodule Mmorpg.WorldServer do
   end
 
   @impl true
-	# Prevent global error if a mob genserver is down
+	# Prevent global error if a mob genserver go down
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
     mobs =
       case Enum.find(state.mobs, fn {_id, p} -> p == pid end) do
@@ -91,6 +91,8 @@ defmodule Mmorpg.WorldServer do
 
     {:noreply, %{state | mobs: mobs}}
   end
+
+	##### PRIVATE FUNCTS
 
   defp broadcast(event, payload) do
     Phoenix.PubSub.broadcast(

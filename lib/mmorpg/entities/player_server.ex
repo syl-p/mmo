@@ -1,4 +1,5 @@
 defmodule Mmorpg.PlayerServer do
+  alias Mmorpg.Components
   alias Mmorpg.PlayerState
   use GenServer
 
@@ -10,12 +11,15 @@ defmodule Mmorpg.PlayerServer do
   def init(player_id) do
     spawn_position = %{x: :rand.uniform(30), y: 0, z: :rand.uniform(30)}
 
-    {:ok,
-     %PlayerState{
-       uuid: player_id,
-       fsm_state: :idle,
-       position: spawn_position
-     }}
+    player_state = %PlayerState{
+      uuid: player_id,
+      fsm_state: :idle,
+      transform: %Components.Transform{
+        position: spawn_position
+      }
+    }
+
+    {:ok, player_state}
   end
 
   def via_tuple(player_id) do
@@ -30,7 +34,9 @@ defmodule Mmorpg.PlayerServer do
     new_state = %PlayerState{
       player_state
       | fsm_state: String.to_atom(fsm_state),
-        position: position
+        transform: %Components.Transform{
+					position: position
+				}
     }
 
     {:noreply, new_state}

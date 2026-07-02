@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import { CSS2DObject } from "three/examples/jsm/renderers/CSS2DRenderer.js";
+import { calculateObjectSize } from "../utils/calc";
 
 export default class Player extends THREE.Object3D {
 	fsm = "idle";
@@ -18,7 +19,14 @@ export default class Player extends THREE.Object3D {
 		this.uuid = uuid;
 		this.#setModel();
 		this.#createLabel();
-		this.position.copy(spawnPosition);
+
+		// Spawn at the centre of the grid cell.
+		// gridToWorld already returns the cell centre, donc on ne doit pas appliquer de décalage x/z.
+		const spawnPositionCopy = spawnPosition.clone();
+		const sizes = calculateObjectSize(this);
+		spawnPositionCopy.y = Math.max(spawnPositionCopy.y, sizes.y / 2);
+
+		this.position.copy(spawnPositionCopy);
 	}
 
 	/**
@@ -41,8 +49,6 @@ export default class Player extends THREE.Object3D {
 	 * @param {number} delta
 	 */
 	update(delta) {
-		if (this.isLocal) return;
-
 		this.position.lerp(this.targetedPosition, delta);
 	}
 
@@ -57,7 +63,7 @@ export default class Player extends THREE.Object3D {
 
 	#setModel() {
 		// TODO: use a model
-		const geometry = new THREE.CapsuleGeometry(2, 2, 10, 20, 1);
+		const geometry = new THREE.CapsuleGeometry(1, 1.5, 10, 20, 1);
 		const material = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
 		const mesh = new THREE.Mesh(geometry, material);
 

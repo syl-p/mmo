@@ -1,4 +1,5 @@
 defmodule MmorpgWeb.Router do
+  alias MmorpgWeb.MobTemplateController
   use MmorpgWeb, :router
 
   pipeline :browser do
@@ -16,6 +17,7 @@ defmodule MmorpgWeb.Router do
 
   scope "/", MmorpgWeb do
     pipe_through :browser
+		resources "/mob_templates", MobTemplateController
 
     # get "/", PageController, :home
     live "/", HomeLive

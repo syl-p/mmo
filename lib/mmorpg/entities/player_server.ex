@@ -1,16 +1,15 @@
 defmodule Mmorpg.PlayerServer do
   alias Mmorpg.Components
   alias Mmorpg.PlayerState
+  alias Mmorpg.Systems
   use GenServer
 
-  def start_link(player_id) do
-    GenServer.start_link(__MODULE__, player_id, name: via_tuple(player_id))
+  def start_link([player_id, _spawn_position] = args) do
+    GenServer.start_link(__MODULE__, args, name: via_tuple(player_id))
   end
 
   @impl true
-  def init(player_id) do
-    spawn_position = %{x: :rand.uniform(30), y: 0, z: :rand.uniform(30)}
-
+  def init([player_id, spawn_position]) do
     player_state = %PlayerState{
       uuid: player_id,
       fsm_state: :idle,
@@ -26,18 +25,38 @@ defmodule Mmorpg.PlayerServer do
     {:via, Registry, {Mmorpg.PlayerRegistry, player_id}}
   end
 
+  # CALLS
+
   @impl true
-  def handle_cast(
-        {:update_player, %{fsm_state: fsm_state, position: position}},
-        %PlayerState{} = player_state
+  def handle_call(
+        {:move_player, to},
+        _from,
+        %PlayerState{transform: %Components.Transform{position: from}} = player_state
       ) do
-    new_state = %PlayerState{
-      player_state
-      | fsm_state: String.to_atom(fsm_state),
-        transform: %Components.Transform{
-					position: position
-				}
-    }
+    case GenServer.call(Mmorpg.WorldServer, {:query_path, from, to}) do
+      {:ok, path} ->
+        path = path |> Enum.map(fn {x, y} -> %{x: x, y: y} end)
+
+        new_state = %PlayerState{
+          player_state
+          | nav_agent: %Components.NavAgent{
+              path: path,
+              is_moving: true
+            }
+        }
+
+        {:reply, {:ok, path}, new_state}
+
+      {:error, reason} ->
+        {:reply, {:error, reason}, player_state}
+    end
+  end
+
+  # CASTS
+
+  def handle_cast({:update}, state) do
+    new_state =
+      state |> Systems.Nav.update()
 
     {:noreply, new_state}
   end

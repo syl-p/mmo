@@ -24,9 +24,9 @@ export default class EventEmitter {
 	 * Description placeholder
 	 *
 	 * @param {string} event
-	 * @param {{}} [args=[]]
+	 * @param {{}[]} [args=[]]
 	 */
-	emit(event, args = []) {
+	emit(event, ...args) {
 		const listeners = this.listeners.get(event);
 		if (!listeners) {
 			return;

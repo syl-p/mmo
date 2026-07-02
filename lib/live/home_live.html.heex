@@ -1,12 +1,27 @@
-<div class="w-full h-screen relative">
+<div id="three_world" class="w-screen h-screen relative" phx-update="ignore">
   <canvas id="game" phx-hook="ThreeWorld" class="w-full h-full"></canvas>
 </div>
 
-<div class="absolute top-0 left-0 z-[100] bg-amber-400">
+<%= if @my_uuid && @players[@my_uuid] do %>
+  <% player = @players[@my_uuid] %>
+
+  <div class="absolute top-0 left-0 z-100 bg-blue-600 text-white p-4 rounded-br-lg">
+    <h3 class="font-bold">Mon joueur</h3>
+    <p>UUID: {player.uuid}</p>
+    <p>HP: {player.hp}</p>
+    <p>Position: {player.transform.position.x}, {player.transform.position.y}</p>
+  </div>
+<% end %>
+
+<div class="absolute bottom-0 left-0 z-100 bg-amber-400">
+  <p>Liste des joueurs:</p>
   <ul>
-    <%= for player <- Map.keys(@players) do %>
-      <li>{player}</li>
+    <%= for {uuid, player} <- @players do %>
+      <%= if @my_uuid && uuid == @my_uuid do %>
+        👤 <strong>{player.uuid}</strong> (moi) - HP: {player.hp}
+      <% else %>
+        👤 {player.uuid} - HP: {player.hp}
+      <% end %>
     <% end %>
   </ul>
 </div>
-

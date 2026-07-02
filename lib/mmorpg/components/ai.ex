@@ -4,7 +4,7 @@ defmodule Mmorpg.Components.Ai do
     :state,
     target_id: nil,
     cooldown_until: 0,
-    aggro_range: 10,
+    aggro_range: 20,
     attack_range: 5
   ]
 end

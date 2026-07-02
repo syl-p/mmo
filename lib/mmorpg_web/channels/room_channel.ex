@@ -1,6 +1,5 @@
 defmodule MmorpgWeb.RoomChannel do
   use MmorpgWeb, :channel
-  require Logger
   alias Mmorpg.WorldServer
 
   @impl true
@@ -9,9 +8,26 @@ defmodule MmorpgWeb.RoomChannel do
       uuid = socket.assigns.uuid
 
       case GenServer.call(WorldServer, {:join_player, uuid}) do
-        {:ok, _pid, initial_state} ->
+        {:ok, initial_state, grid} ->
           send(self(), :after_join)
-          {:ok, %{player_uuid: uuid, initial_state: initial_state}, socket}
+
+          grid_payload = %{
+            width: grid.width,
+            height: grid.height,
+            obstacles:
+              grid.cells
+              |> Enum.filter(fn {_pos, cell} -> not cell.walkable end)
+              # serialize
+              |> Enum.map(fn {{x, y}, _cell} -> %{x: x, y: y} end)
+          }
+
+          {:ok,
+           %{
+             player_uuid: uuid,
+             initial_state: initial_state,
+             grid: grid_payload
+           }, socket}
+
         {:error, _message} ->
           {:error, %{reason: "World doesn't want you !"}}
       end
@@ -57,34 +73,23 @@ defmodule MmorpgWeb.RoomChannel do
     :ok
   end
 
-  @impl true
   def handle_in(
-        "player_update",
-        %{
-          "uuid" => _uuid,
-          "position" => %{"x" => x, "y" => y, "z" => z},
-          "fsm_state" => fsm_state
-        },
+        "select_cell",
+        # serialize
+        %{"x" => to_x, "y" => to_y},
         socket
       ) do
+    player_server = Mmorpg.PlayerServer.via_tuple(socket.assigns.uuid)
 
-    uuid = socket.assigns.uuid
-		x = if is_binary(x), do: String.to_float(x), else: x
-		y = if is_binary(y), do: String.to_float(y), else: y
-		z = if is_binary(z), do: String.to_float(z), else: z
+    case GenServer.call(player_server, {:move_player, %{x: to_x, y: to_y}}) do
+      {:ok, path} ->
+        push(socket, "path_found", %{path: path})
+        {:noreply, socket}
 
-
-    GenServer.cast(
-      WorldServer,
-      {:player_update,
-       %{
-         uuid: uuid,
-         position: %{x: x, y: y, z: z},
-         fsm_state: fsm_state
-       }}
-    )
-
-    {:noreply, socket}
+      {:error, reason} ->
+        push(socket, "path_error", %{reason: reason})
+        {:noreply, socket}
+    end
   end
 
   # Add authorization logic here as required.

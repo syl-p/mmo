@@ -8,8 +8,7 @@ defmodule Mmorpg.MobState do
     ai: %Components.Ai{},
 		combat: %Components.Combat{},
     velocity: 1,
-    patrol_points: [],
-    current_patrol_index: 0,
+		patrol: %Components.Patrol{},
     rotation: 0.0
   ]
 end

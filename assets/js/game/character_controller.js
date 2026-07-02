@@ -1,5 +1,6 @@
 import KeyboardController from "./utils/keyboard_controller";
 import EventEmitter from "./utils/event_emitter";
+import MouseController from "./utils/mouse_controller";
 
 const ACTIONS = [
 	{ name: "forward", keys: ["Keyboard.ArrowUp", "Keyboard.KeyW"] },
@@ -7,11 +8,12 @@ const ACTIONS = [
 ];
 
 export default class CharacterController {
-	// events = new EventEmitter();
+	events = new EventEmitter();
 	#activeActions = new Set();
 
 	constructor() {
 		this.keyboard = new KeyboardController();
+		this.mouse = new MouseController();
 
 		this.keyboard.events.on("down", (key) => {
 			this.start(`Keyboard.${key}`);
@@ -20,13 +22,21 @@ export default class CharacterController {
 		this.keyboard.events.on("up", (key) => {
 			this.end(`Keyboard.${key}`);
 		});
+
+		this.mouse.events.on("down", (args) => {
+			this.events.emit("select", args);
+		});
+
+		this.mouse.events.on("move", (args) => {
+			this.events.emit("move", args);
+		});
 	}
 
 	start(key) {
 		const action = ACTIONS.find((action) => action.keys.find((k) => k === key));
 		if (action) {
 			this.#activeActions.add(action.name);
-			// this.events.emit(action.name);
+			this.events.emit(action.name);
 		}
 	}
 
@@ -35,7 +45,7 @@ export default class CharacterController {
 
 		if (action) {
 			this.#activeActions.delete(action.name);
-			// this.events.emit(`end:${action.name}`);
+			this.events.emit(`end:${action.name}`);
 		}
 	}
 

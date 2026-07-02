@@ -14,8 +14,11 @@ export const ThreeWorld = {
 		try {
 			this.socket.connect();
 			const channel = this.socket.channel("room:42", {});
-			this.game = new Game(this.el);
-			this.client = new Client(channel);
+			this.game = new Game(this.el, channel, {
+				pushEvent: (event, payload) => {
+					this.pushEvent(event, payload);
+				},
+			});
 		} catch (e) {
 			console.error(e);
 		}

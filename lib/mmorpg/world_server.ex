@@ -1,8 +1,11 @@
 defmodule Mmorpg.WorldServer do
+  alias Mmorpg.PathFinder
+  alias Mmorpg.Grid
   use GenServer
   @world_channel "room:42"
   @tick_rate 50
 
+  @spec start_link(any()) :: :ignore | {:error, any()} | {:ok, pid()}
   def start_link(_) do
     GenServer.start_link(__MODULE__, %{}, name: __MODULE__)
   end
@@ -10,25 +13,43 @@ defmodule Mmorpg.WorldServer do
   @impl true
   def init(_) do
     schedule_tick()
-    mobs = generate_mobs(5)
+    mobs = generate_mobs(20)
+
+    grid =
+      Grid.generate(
+        width: 50,
+        height: 50,
+        manual_obstacles: MapSet.new([{10, 10}, {30, 40}, {30, 30}])
+      )
+
+    IO.puts("world initialized: grid=#{inspect(grid)}")
 
     state = %{
       players: %{},
-      mobs: mobs
+      mobs: mobs,
+      grid: grid
     }
 
     {:ok, state}
   end
 
+  # CALLS
+
   @impl true
   def handle_call({:join_player, uuid}, _from, state) do
-    case DynamicSupervisor.start_child(Mmorpg.PlayerSupervisor, {Mmorpg.PlayerServer, uuid}) do
+    spawn_position = Grid.random_walkable(state.grid)
+
+    case DynamicSupervisor.start_child(
+           Mmorpg.PlayerSupervisor,
+           {Mmorpg.PlayerServer, [uuid, spawn_position]}
+         ) do
       {:ok, pid} ->
         players = Map.put(state.players, uuid, pid)
         initial_state = :sys.get_state(pid)
+        grid = state.grid
 
         broadcast(:player_joined, initial_state)
-        {:reply, {:ok, pid, initial_state}, %{state | players: players}}
+        {:reply, {:ok, initial_state, grid}, %{state | players: players}}
 
       {:error, message} ->
         {:reply, {:error, message}, state}
@@ -40,6 +61,24 @@ defmodule Mmorpg.WorldServer do
 
     {:reply, world_snapshot, state}
   end
+
+  def handle_call({:query_path, from, to}, _from, state) do
+    from = {round(from.x), round(from.y)}
+    to = {round(to.x), round(to.y)}
+
+    IO.puts("query_path: from=#{inspect(from)} to=#{inspect(to)}")
+
+    case PathFinder.find_path(state.grid, from, to) do
+      {:error, reason} ->
+        IO.puts("query_path: error=#{inspect(reason)}")
+        {:reply, {:error, reason}, state}
+
+      path ->
+        {:reply, path, state}
+    end
+  end
+
+  # CASTS
 
   def handle_cast({:player_left, uuid}, state) do
     {pid, players} = Map.pop(state.players, uuid)
@@ -60,6 +99,8 @@ defmodule Mmorpg.WorldServer do
     {:noreply, state}
   end
 
+  # INFOS
+
   @impl true
   def handle_info(:tick, state) do
     state_map = get_world_snapshot(state)
@@ -70,6 +111,12 @@ defmodule Mmorpg.WorldServer do
       end
     end)
 
+    Enum.each(state.players, fn {_uuid, pid} ->
+      if Process.alive?(pid) do
+        GenServer.cast(pid, {:update})
+      end
+    end)
+
     broadcast(:world_update, state_map)
 
     schedule_tick()
@@ -77,7 +124,7 @@ defmodule Mmorpg.WorldServer do
   end
 
   @impl true
-	# Prevent global error if a mob genserver go down
+  # Prevent global error if a mob genserver go down
   def handle_info({:DOWN, _ref, :process, pid, reason}, state) do
     mobs =
       case Enum.find(state.mobs, fn {_id, p} -> p == pid end) do
@@ -92,7 +139,7 @@ defmodule Mmorpg.WorldServer do
     {:noreply, %{state | mobs: mobs}}
   end
 
-	##### PRIVATE FUNCTS
+  ##### PRIVATE FUNCTS
 
   defp broadcast(event, payload) do
     Phoenix.PubSub.broadcast(
@@ -104,7 +151,9 @@ defmodule Mmorpg.WorldServer do
 
   defp get_world_snapshot(state) do
     players =
-      Enum.map(state.players, fn {_id, pid} ->
+      state.players
+      |> Enum.filter(fn {_uuid, pid} -> Process.alive?(pid) end)
+      |> Enum.map(fn {_uuid, pid} ->
         :sys.get_state(pid)
       end)
 
@@ -118,16 +167,16 @@ defmodule Mmorpg.WorldServer do
     %{players: players, mobs: mobs}
   end
 
-	# generates some mobs and monitor process
+  # generates some mobs and monitor process
   defp generate_mobs(count) do
     1..count
     |> Enum.map(fn i ->
       {:ok, pid} = DynamicSupervisor.start_child(Mmorpg.MobSupervisor, {Mmorpg.MobServer, i})
 
-			# to be notified if Mob is down
-			Process.monitor(pid)
+      # to be notified if Mob is down
+      Process.monitor(pid)
 
-			{i, pid}
+      {i, pid}
     end)
     |> Map.new()
   end

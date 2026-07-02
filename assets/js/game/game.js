@@ -1,31 +1,68 @@
 import * as THREE from "three";
+import Stats from "three/examples/jsm/libs/stats.module.js";
 import Time from "./utils/time";
 import Sizes from "./utils/sizes";
 import Camera from "./camera";
 import Renderer from "./renderer";
-import { setGridFloor } from "./terrain";
 import Debug from "./utils/debug";
+import Player from "./entities/player";
+import TerrainManager from "./map/terrain_manager";
+import CharacterController from "./character_controller";
+import Environement from "./environement";
+import GrassChunkManager from "./map/grass_chunk_manager";
+import ResourceManager from "./resource_manager";
+import sources from "./sources";
+import ObstacleManager from "./map/obstacle_manager";
+import GridManager from "./map/grid_manager";
+import Terrain from "./map/terrain";
+import { Channel } from "phoenix";
+import Client from "./client";
 
 export default class Game {
 	debug = new Debug();
+	stats = new Stats();
 	scene = new THREE.Scene();
 	time = new Time();
 	sizes = new Sizes();
-	renderer = null;
-	camera = null;
-	playerUuid = null;
 
-	// TODO: Entity manager ?
 	players = new Map();
 	mobs = new Map();
 
-	constructor(canvas) {
+	/** @type {GridManager} */
+	grid = null;
+
+	/** @type {string} */
+	playerUuid = null;
+
+	/** @type {CharacterController} */
+	characterController = null;
+
+	renderer = null;
+	/** @type {Camera} */
+	camera = null;
+
+	/**
+	 *
+	 * @param {HTMLCanvasElement} canvas
+	 * @param {Channel} chanel
+	 * @param {Object} options
+	 * @returns
+	 */
+	constructor(canvas, channel, options) {
 		if (Game.instance) {
 			return Game.instance;
 		}
 
 		Game.instance = this;
-		this.init(canvas);
+		this.client = new Client(channel, options);
+
+		this.init(canvas).then(() => {
+			console.log("Game initialized");
+		});
+
+		if (this.debug.active) {
+			document.body.appendChild(this.stats.dom);
+		}
 	}
 
 	/**
@@ -36,34 +73,86 @@ export default class Game {
 		return Game.instance;
 	}
 
-	init(canvas) {
+	async init(canvas) {
 		if (!canvas) throw new Error("No canvas... !");
-
 		this.canvas = canvas;
+		this.environement = new Environement();
+		// this.terrain = new Terrain(this.scene, this.debug);
 
-		// Env
-		const light = new THREE.AmbientLight(0xffffff);
-		this.scene.add(light);
-
-		const light2 = new THREE.DirectionalLight(0xffffff, 1.8);
-		light.position.set(0, 10, 5);
-		this.scene.add(light2);
-
-		// Terrain
-		const grid = setGridFloor();
-		this.scene.add(grid);
-
-		// camera and render
+		// camera and controller
 		this.camera = new Camera();
+		if (this.player) {
+			this.camera.target = this.player;
+		}
+
+		// render
 		this.renderer = new Renderer();
+
+		// Resources
+		this.resourceManager = new ResourceManager(sources);
+		this.resourceManager.on("progress", (url, loaded, total) => {
+			console.log("loading", loaded, total);
+		});
+		this.resourceManager.on("ready", () => {
+			console.log("ready");
+			new ObstacleManager(this.resourceManager);
+		});
 
 		// Callback
 		this.time.on("tick", () => {
 			this.#update();
+			// this.terrain.update();
 		});
 
 		this.sizes.on("resize", () => {
 			this.#resize();
+		});
+	}
+
+	/**
+	 * Get the player 3D Object
+	 * @readonly
+	 * @type {Player | undefined}
+	 */
+	get player() {
+		return this.players.get(this.playerUuid);
+	}
+
+	initGrid(width, height, obstacles) {
+		this.grid = new GridManager(
+			this.scene,
+			this.camera.instance,
+			width,
+			height,
+			obstacles,
+		);
+	}
+
+	/**
+	 *
+	 */
+	initCharacterController() {
+		if (!this.grid) throw new Error("No grid... !");
+		this.characterController = new CharacterController();
+
+		this.characterController.events.on("select", (args) => {
+			const { x, y } = args;
+			const position = this.#getWorldPosition(x, y, this.grid.gridGroup);
+
+			if (position) {
+				const worldToGrid = GridManager.worldToGrid(position.x, position.z);
+				this.client.selectCell({ x: worldToGrid.x, y: worldToGrid.y });
+			}
+		});
+
+		this.characterController.events.on("move", (args) => {
+			const { x, y } = args;
+			const position = this.#getWorldPosition(x, y, this.grid.gridGroup);
+
+			if (position) {
+				const worldToGrid = GridManager.worldToGrid(position.x, position.z);
+				this.grid.onHover(worldToGrid.x, worldToGrid.y);
+			}
 		});
 	}
 
@@ -77,7 +166,7 @@ export default class Game {
 				child.geometry.dispose();
 				for (const key in child.material) {
 					const value = child.material[key];
-					// Test if there is a dispose function
+
 					if (value && typeof value.dispose === "function") {
 						value.dispose();
 					}
@@ -92,40 +181,32 @@ export default class Game {
 		}
 	}
 
-	#updateLocalPlayer() {
-		const player = this.players.get(this.playerUuid);
-		if (!player) return;
+	/**
+	 * PRIVATE METHODS
+	 */
 
-		const delta = this.time.delta;
-		if (this.characterController?.isActive("forward")) {
-			const speed = 3.0; // unités/seconde
-			const moveDistance = speed * delta * 0.005;
-			//player.position.z += speed * delta * 0.005;
+	/**
+	 *
+	 * @param {number} x
+	 * @param {number} y
+	 * @param {THREE.Object3D} intersectObject
+	 * @returns {THREE.Vector3 | null}
+	 */
+	#getWorldPosition(x, y, intersectObject) {
+		const raycaster = new THREE.Raycaster();
+		raycaster.setFromCamera({ x: x, y: y }, this.camera.instance);
 
-			// change direction
-			const cameraDirection = new THREE.Vector3()
-			this.camera.instance.getWorldDirection(cameraDirection)
+		const hits = raycaster.intersectObject(intersectObject);
 
-			cameraDirection.y = 0 // Cancel Y
-			cameraDirection.normalize()
-
-			player.position.x += cameraDirection.x * moveDistance
-			player.position.z += cameraDirection.z * moveDistance
-
-			player.rotation.y = Math.atan2(cameraDirection.x, cameraDirection.z);
-
-			player.changeFsmState("walk");
-			player._dirty = true;
-		} else {
-			player.changeFsmState("idle");
-			player._dirty = true;
+		if (hits.length > 0) {
+			return hits[0].point;
 		}
+		return null;
 	}
 
 	#update() {
 		this.camera.update();
 		this.renderer.update();
-		this.#updateLocalPlayer();
 
 		this.players.forEach((p) => {
 			p.update(this.time.delta * 0.005);
@@ -134,6 +215,10 @@ export default class Game {
 		this.mobs.forEach((m) => {
 			m.update(this.time.delta * 0.005);
 		});
+
+		if (this.debug.active) {
+			this.stats.update();
+		}
 	}
 
 	#resize() {

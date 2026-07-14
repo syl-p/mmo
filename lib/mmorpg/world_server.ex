@@ -13,7 +13,6 @@ defmodule Mmorpg.WorldServer do
   @impl true
   def init(_) do
     schedule_tick()
-    mobs = generate_mobs(20)
 
     grid =
       Grid.generate(
@@ -22,6 +21,7 @@ defmodule Mmorpg.WorldServer do
         manual_obstacles: MapSet.new([{10, 10}, {30, 40}, {30, 30}])
       )
 
+    mobs = generate_mobs(20, grid)
     IO.puts("world initialized: grid=#{inspect(grid)}")
 
     state = %{
@@ -168,10 +168,11 @@ defmodule Mmorpg.WorldServer do
   end
 
   # generates some mobs and monitor process
-  defp generate_mobs(count) do
+  defp generate_mobs(count, grid) do
     1..count
     |> Enum.map(fn i ->
-      {:ok, pid} = DynamicSupervisor.start_child(Mmorpg.MobSupervisor, {Mmorpg.MobServer, i})
+      {:ok, pid} =
+        DynamicSupervisor.start_child(Mmorpg.MobSupervisor, {Mmorpg.MobServer, [i, grid]})
 
       # to be notified if Mob is down
       Process.monitor(pid)

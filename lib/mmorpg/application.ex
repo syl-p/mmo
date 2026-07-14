@@ -23,7 +23,9 @@ defmodule Mmorpg.Application do
       {DynamicSupervisor, strategy: :one_for_one, name: Mmorpg.PlayerSupervisor},
       {Registry, keys: :unique, name: Mmorpg.MobRegistry},
       {DynamicSupervisor, strategy: :one_for_one, name: Mmorpg.MobSupervisor},
-      Mmorpg.WorldServer
+      {DynamicSupervisor, strategy: :one_for_one, name: Mmorpg.MatchVsMobSupervisor},
+      Mmorpg.WorldServer,
+			Mmorpg.ChatServer
     ]
 
     # See https://hexdocs.pm/elixir/Supervisor.html

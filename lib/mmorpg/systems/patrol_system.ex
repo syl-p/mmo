@@ -14,8 +14,7 @@ defmodule Mmorpg.Systems.Patrol do
           ai: %Ai{state: :patrol},
           transform:
             %Transform{
-              position: %Position{} = position,
-              rotation: rotation
+              position: %Position{} = position
             } = transform,
           patrol: %Patrol{
             patrol_points: patrol_points,
@@ -36,7 +35,13 @@ defmodule Mmorpg.Systems.Patrol do
     if dist < 0.1 do
       # Move to the next patrol point
       new_index = rem(current_patrol_index + 1, length(patrol_points))
-      %MobState{state | patrol: %Patrol{current_patrol_index: new_index}, rotation: rotation}
+
+      %MobState{
+        state
+        | patrol: %Patrol{state.patrol |
+				current_patrol_index: new_index},
+          rotation: rotation
+      }
     else
       # Move towards the target
       step = 0.05

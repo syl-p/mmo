@@ -6,10 +6,8 @@ import Camera from "./camera";
 import Renderer from "./renderer";
 import Debug from "./utils/debug";
 import Player from "./entities/player";
-import TerrainManager from "./map/terrain_manager";
 import CharacterController from "./character_controller";
 import Environement from "./environement";
-import GrassChunkManager from "./map/grass_chunk_manager";
 import ResourceManager from "./resource_manager";
 import sources from "./sources";
 import ObstacleManager from "./map/obstacle_manager";
@@ -25,7 +23,15 @@ export default class Game {
 	time = new Time();
 	sizes = new Sizes();
 
+	/**
+	 * @type {Map<string, Player>}
+	 */
 	players = new Map();
+
+
+	/**
+	 * @type {Map<string, Mob>}
+	 */
 	mobs = new Map();
 
 	/** @type {GridManager} */
@@ -58,6 +64,8 @@ export default class Game {
 
 		this.init(canvas).then(() => {
 			console.log("Game initialized");
+			window.Game = this
+			this.initTerrain();
 		});
 
 		if (this.debug.active) {
@@ -77,7 +85,6 @@ export default class Game {
 		if (!canvas) throw new Error("No canvas... !");
 		this.canvas = canvas;
 		this.environement = new Environement();
-		// this.terrain = new Terrain(this.scene, this.debug);
 
 		// camera and controller
 		this.camera = new Camera();
@@ -101,7 +108,6 @@ export default class Game {
 		// Callback
 		this.time.on("tick", () => {
 			this.#update();
-			// this.terrain.update();
 		});
 
 		this.sizes.on("resize", () => {
@@ -156,6 +162,10 @@ export default class Game {
 		});
 	}
 
+	initTerrain() {
+		this.terrain = new Terrain(this.scene, this.debug);
+	}
+
 	destroy() {
 		this.sizes.off("resize");
 		this.time.off("tick");
@@ -207,6 +217,7 @@ export default class Game {
 	#update() {
 		this.camera.update();
 		this.renderer.update();
+		this.terrain.update(this.player)
 
 		this.players.forEach((p) => {
 			p.update(this.time.delta * 0.005);

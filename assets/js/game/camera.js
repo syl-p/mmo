@@ -5,10 +5,10 @@ import Game from "./game";
 export default class Camera {
 	#target = null;
 	#config = {
-		frustumSize: 50,
-		isoAngle: new THREE.Vector3(50, 50, 50), // offset iso depuis la cible
-		active: false,
+		frustumSize: 60,
+		offset: new THREE.Vector3(1, 1, 1).normalize().multiplyScalar(60), // offset iso depuis la cible
 	};
+
 	#controls = null;
 
 	constructor() {
@@ -26,8 +26,8 @@ export default class Camera {
 	 */
 	set target(object) {
 		this.#target = object
-		this.instance.lookAt(this.#target.position)
-		this.controls.target.copy(this.#target.position)
+		// this.instance.lookAt(this.#target.position)
+		this.#controls.target.copy(this.#target.position)
 	}
 
 	setInstance() {
@@ -43,27 +43,25 @@ export default class Camera {
 			1000                        // far
 		);
 
-		this.instance.position.set(50, 50, 50);
+		this.instance.position.set(60, 60, 60);
+		this.instance.lookAt(0, 0, 0);
 		this.scene.add(this.instance);
 	}
 
 
 	setOrbitControls() {
-		this.controls = new OrbitControls(this.instance, this.canvas);
-		this.controls.enableDamping = true;
-		this.controls.dampingFactor = 0.05;
+		this.#controls = new OrbitControls(this.instance, this.canvas);
+		this.#controls.enableDamping = true;
+		this.#controls.dampingFactor = 0.05;
 
 		// 🔒 Angle vertical fixe (isométrique ~35.26°)
-		this.controls.minPolarAngle = Math.PI / 4; // 45°
-		this.controls.maxPolarAngle = Math.PI / 4; // bloque à 45°
+		this.#controls.minPolarAngle = Math.PI / 4; // 45°
+		this.#controls.maxPolarAngle = Math.PI / 4; // bloque à 45°
 
-		// 🔒 Angle horizontal fixe si tu veux (sinon tu peux laisser libre)
-		// this.controls.minAzimuthAngle = Math.PI / 4;
-		// this.controls.maxAzimuthAngle = Math.PI / 4;
 
-		this.controls.enableRotate = false; // ou true si tu veux la rotation libre
-		this.controls.enablePan = false;    // le pan est géré manuellement via target
-		this.controls.enableZoom = true;
+		this.#controls.enableRotate = false; // ou true si tu veux la rotation libre
+		this.#controls.enablePan = false;    // le pan est géré manuellement via target
+		this.#controls.enableZoom = true;
 	}
 
 	resize() {
@@ -82,15 +80,8 @@ export default class Camera {
 	update() {
 		if (!this.#target) return;
 
-		const delta = new THREE.Vector3()
-			.copy(this.#target.position)
-			.sub(this.controls.target);
-
-		delta.y = 0
-
-		this.controls.target.copy(this.#target.position);
-
-		this.instance.position.add(delta);
-		this.controls.update();
+		this.instance.position.copy(this.#target.position).add(this.#config.offset);
+		this.#controls.target.copy(this.#target.position);
+  	this.#controls.update();
 	}
 }

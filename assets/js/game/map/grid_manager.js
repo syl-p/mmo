@@ -76,6 +76,12 @@ export default class GridManager {
 		this.scene.add(this.gridGroup);
 	}
 
+	/**
+	 *
+	 * @param {number} gridX
+	 * @param {number} gridY
+	 * @returns
+	 */
 	static gridToWorld(gridX, gridY) {
 		return new THREE.Vector3(
 			gridX * CELL_SIZE + CELL_SIZE / 2,

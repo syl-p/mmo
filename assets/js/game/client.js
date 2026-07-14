@@ -54,7 +54,7 @@ export default class Client {
 			players.forEach(({ uuid, transform }) => {
 				if (this.game.players.has(uuid)) return;
 				const { position, rotation } = transform;
-				const { x, y, z } = GridManager.gridToWorld(position.x, position.z);
+				const { x, y, z } = GridManager.gridToWorld(position.x, position.y);
 
 				const playerObject = new Player(uuid, new THREE.Vector3(x, y, z));
 
@@ -64,7 +64,7 @@ export default class Client {
 
 			mobs.forEach(({ uuid, transform }) => {
 				const { position, rotation } = transform;
-				const { x, y, z } = GridManager.gridToWorld(position.x, position.z);
+				const { x, y, z } = GridManager.gridToWorld(position.x, position.y);
 
 				const mobObject = new Mob(uuid, new THREE.Vector3(x, y, z));
 
@@ -77,7 +77,7 @@ export default class Client {
 		this.#channel.on("player_joined", ({ uuid, transform }) => {
 			if (this.game.players.has(uuid)) return;
 			const { position } = transform;
-			const { x, y, z } = GridManager.gridToWorld(position.x, position.z);
+			const { x, y, z } = GridManager.gridToWorld(position.x, position.y);
 
 			const playerObject = new Player(uuid, new THREE.Vector3(x, y, z));
 			this.game.players.set(uuid, playerObject);
@@ -95,7 +95,7 @@ export default class Client {
 
 		this.#channel.on("world_updated", ({ players, mobs }) => {
 			players.forEach(({ uuid, transform, fsm_state }) => {
-				const { position, rotation } = transform;
+				const { position } = transform;
 				this.updatePlayer(uuid, { position, fsm_state });
 			});
 
@@ -109,8 +109,6 @@ export default class Client {
 		this.#channel.on("path_found", ({ path }) => {
 			console.log("path found:", path);
 		});
-
-		// this.game.time.on("tick", () => this.#syncPlayer());
 	}
 
 	updatePlayer(uuid, { position, fsm_state }) {
@@ -143,27 +141,5 @@ export default class Client {
 	 */
 	selectCell(cell) {
 		this.#channel.push("select_cell", cell);
-	}
-
-	#syncPlayer() {
-		const player = this.game.player;
-
-		if (!player || !player._dirty) return;
-		const now = Date.now();
-
-		if (!this._lastMoveSend || now - this._lastMoveSend > 50) {
-			this._lastMoveSend = now;
-
-			this.#channel.push("player_update", {
-				uuid: player.uuid,
-				position: {
-					x: player.position.x,
-					y: player.position.y,
-					z: player.position.z,
-				},
-				fsm_state: player.fsm,
-			});
-			player._dirty = false;
-		}
 	}
 }

@@ -13,7 +13,7 @@
   </div>
 <% end %>
 
-<div class="absolute bottom-0 left-0 z-100 bg-amber-400">
+<div class="absolute top-0 right-0 z-100 bg-amber-400">
   <p>Liste des joueurs:</p>
   <ul>
     <%= for {uuid, player} <- @players do %>
@@ -24,4 +24,13 @@
       <% end %>
     <% end %>
   </ul>
+</div>
+
+<div class="absolute bottom-0 left-0 z-100 bg-green-400">
+  <.live_component
+    module={MmorpgWeb.ChatComponent}
+    id="chat"
+    my_uuid={@my_uuid}
+    messages={@messages}
+  />
 </div>

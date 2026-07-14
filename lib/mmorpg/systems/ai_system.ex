@@ -83,7 +83,7 @@ defmodule Mmorpg.Systems.AiSystem do
 
     # TAKE DECISION
     cond do
-      player == nil || player.hp == 0 ->
+      player == nil || player.hp <= 0 ->
         %MobState{state | ai: %{ai | state: :idle, target_id: nil}}
 
       ai.target_id == nil ->
@@ -123,8 +123,6 @@ defmodule Mmorpg.Systems.AiSystem do
         IO.puts("player not found !")
         %MobState{state | ai: %{state.ai | target_id: nil, state: :idle}}
     end
-
-    state
   end
 
   @spec on_cooldown?(%MobState{}) :: boolean()

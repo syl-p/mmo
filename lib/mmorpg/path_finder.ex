@@ -1,11 +1,4 @@
 defmodule Mmorpg.PathFinder do
-  alias Mmorpg.Systems.Utils
-
-  @spec random() :: list(%{x: number(), y: number()})
-  def random do
-    Enum.map(1..5, fn _ -> Utils.generate_position(200) end)
-  end
-
   def find_path(grid, from, to) do
     cond do
       from == to ->

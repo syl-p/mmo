@@ -63,8 +63,8 @@ defmodule Mmorpg.PlayerServer do
 
   @impl true
   def handle_cast({:take_damage, amount}, %PlayerState{} = state) do
-    IO.puts("aie ! Ouch !")
+    # IO.puts("aie ! Ouch !")
 
-    {:noreply, %PlayerState{state | hp: state.hp - amount}}
+    {:noreply, %PlayerState{state | hp: max(0, state.hp - amount)}}
   end
 end

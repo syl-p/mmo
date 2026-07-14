@@ -1,16 +1,16 @@
 defmodule Mmorpg.MobServer do
-  alias Mmorpg.PathFinder
+  alias Mmorpg.Grid
   alias Mmorpg.Components
   alias Mmorpg.Systems
   alias Mmorpg.MobState
   use GenServer
 
-  def start_link(mob_id) do
-    GenServer.start_link(__MODULE__, mob_id, name: via_tuple(mob_id))
+  def start_link([mob_id, grid]) do
+    GenServer.start_link(__MODULE__, [mob_id, grid], name: via_tuple(mob_id))
   end
 
-  def init(mob_id) do
-    patrol_points = PathFinder.random()
+  def init([mob_id, grid]) do
+    patrol_points = Enum.map(1..5, fn _ -> Grid.random_walkable(grid) end)
     [spawn_position | _tail] = patrol_points
 
     mob_state = %MobState{

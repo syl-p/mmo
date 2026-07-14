@@ -73,6 +73,7 @@ defmodule MmorpgWeb.RoomChannel do
     :ok
   end
 
+  @impl true
   def handle_in(
         "select_cell",
         # serialize
